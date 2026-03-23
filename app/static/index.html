@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaintainIQ Industrial Dashboard</title>
+    <style>
+        :root { --bg: #111418; --primary: #ffaa00; --card: #1c2128; --text: #e2e8f0; --accent: #ff4500; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px; display: flex; justify-content: center; }
+        .container { background: var(--card); padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 800px; border-top: 4px solid var(--primary); }
+        h1 { margin-top: 0; color: var(--primary); letter-spacing: 1px; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .input-group { display: flex; flex-direction: column; }
+        textarea { background: #0d1115; color: #00ff88; border: 1px solid rgba(255,170,0,0.3); padding: 15px; border-radius: 8px; font-family: monospace; font-size: 14px; resize: vertical; min-height: 100px; }
+        textarea:focus { outline: none; border-color: var(--primary); }
+        .btn { background: var(--primary); color: #000; border: none; padding: 15px 30px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; width: 100%; }
+        .btn:hover { background: var(--accent); color: #fff; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .loader { border: 3px solid rgba(255,170,0,0.1); border-top: 3px solid var(--primary); border-radius: 50%; width: 25px; height: 25px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-left: 10px; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Response Area */
+        .response-area { margin-top: 30px; display: none; }
+        .answer-box { background: rgba(0,255,136,0.1); border-left: 4px solid #00ff88; padding: 20px; font-size: 16px; line-height: 1.5; border-radius: 0 8px 8px 0; }
+        .context-box { margin-top: 20px; background: rgba(255,170,0,0.05); border: 1px solid rgba(255,170,0,0.2); padding: 20px; border-radius: 8px; font-family: monospace; font-size: 13px; color: #aaa; white-space: pre-wrap; }
+        .badge { display: inline-block; background: var(--primary); color: #000; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1><span style="color: #fff;">MAINTAIN</span>IQ</h1>
+    <p style="opacity: 0.7; font-size: 14px; margin-bottom: 30px;">Industrial IoT Diagnostic Edge - Hybrid RAG Engine (BM25 + FAISS Vector Fusion)</p>
+    
+    <div class="grid">
+        <div class="input-group">
+            <label style="margin-bottom: 8px; font-weight: 600; color: #aaa;">Diagnostic Query / Sensor Alert:</label>
+            <textarea id="queryInput" placeholder="e.g. Pump X-900 is showing Error Code 404 with pressure spiking wildly. What should I do?"></textarea>
+            <button class="btn" id="queryBtn" onclick="runQuery()">Run Hybrid Diagnostic <div class="loader" id="loader"></div></button>
+        </div>
+    </div>
+
+    <div class="response-area" id="responseArea">
+        <label style="margin-bottom: 8px; font-weight: 600; color: #aaa; display: block; margin-top: 20px;">AI Resolution:</label>
+        <div class="answer-box" id="aiAnswer"></div>
+        
+        <label style="margin-bottom: 8px; font-weight: 600; color: #aaa; display: block; margin-top: 30px;">Reciprocal Rank Fusion (RRF) Extracted Contexts:</label>
+        <div class="context-box">
+            <div class="badge">Hybrid Dense + Sparse Match</div>
+            <div id="aiContext"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function runQuery() {
+        const query = document.getElementById('queryInput').value;
+        if(!query) return;
+        
+        const btn = document.getElementById('queryBtn');
+        const loader = document.getElementById('loader');
+        const responseArea = document.getElementById('responseArea');
+        
+        btn.disabled = true;
+        loader.style.display = 'inline-block';
+        responseArea.style.display = 'none';
+
+        try {
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({query: query})
+            });
+            const data = await response.json();
+            
+            document.getElementById('aiAnswer').innerText = data.answer;
+            // Provide a graceful fallback if context parsing failed due to bad API keys
+            if(data.retrieved_context && data.retrieved_context.length > 0) {
+                document.getElementById('aiContext').innerText = data.retrieved_context.join("\n\n---\n\n");
+            } else {
+                document.getElementById('aiContext').innerText = "System was unable to index vectors (Missing API Key).";
+            }
+            
+            responseArea.style.display = 'block';
+        } catch (err) {
+            alert("Network Error! Ensure the FastAPI backend is running on 8002.");
+        }
+        
+        btn.disabled = false;
+        loader.style.display = 'none';
+    }
+</script>
+</body>
+</html>

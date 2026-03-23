@@ -1,0 +1,66 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Colab / Jupyter 
+.ipynb_checkpoints
+*/notebooks/.ipynb_checkpoints/
+
+# Data and Models
+*.csv
+*.dat
+*.out
+*.log
+*.model
+*.h5
+*.pt
+*.pth
+*.onnx
+*.engine
+*.trt
+data/
+datasets/
+models/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific ignores
+MaintainIQ/vector_db/
+AutoQuant/vector_db/
