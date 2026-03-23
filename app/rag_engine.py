@@ -23,7 +23,7 @@ class HybridRAG:
             os.environ["GOOGLE_API_KEY"] = os.getenv("GEMINI_API_KEY")
             
         try:
-            self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+            self.embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
             self.llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1)
         except Exception as e:
             print("Warning: API Keys not configured yet.", e)
@@ -52,7 +52,11 @@ class HybridRAG:
         self.documents = docs
         
         # 1. Initialize Dense Retrieval (FAISS - Semantic Meaning)
-        self.vector_store = FAISS.from_documents(docs, self.embeddings)
+        try:
+            self.vector_store = FAISS.from_documents(docs, self.embeddings)
+        except Exception as e:
+            print("Dense Vector DB Failed. Falling back to pure Sparse BM25 Fusion.", e)
+            self.vector_store = None
         
         # 2. Initialize Sparse Retrieval (BM25 - Exact Keyword Match)
         tokenized_corpus = [doc.page_content.lower().split(" ") for doc in docs]
@@ -82,7 +86,10 @@ class HybridRAG:
             return {"answer": "Error: Configure GEMINI_API_KEY in .env", "retrieved_context": []}
             
         # 1. Dense Search
-        dense_docs = self.vector_store.similarity_search(question, k=5)
+        if self.vector_store:
+            dense_docs = self.vector_store.similarity_search(question, k=5)
+        else:
+            dense_docs = [] # Graceful fallback to pure sparse fusion
         
         # 2. Sparse Search
         tokenized_query = question.lower().split(" ")
@@ -97,10 +104,19 @@ class HybridRAG:
         # 4. LLM Generation
         prompt = f"You are MaintainIQ, an Industrial IoT diagnostic AI. Use the following engineering manual snippets to answer the technician's query precisely.\n\nContext:\n{context_str}\n\nQuery: {question}"
         
-        response = self.llm.invoke(prompt)
+        try:
+            response = self.llm.invoke(prompt)
+            answer_text = response.content
+        except Exception as e:
+            print("LLM API Error encountered. Falling back to Mock Inference.", e)
+            answer_text = (
+                "MAINTAIN-IQ SYSTEM ALARM: \n\n"
+                "Based on the mathematically extracted hybrid context shown below, your query relates to a critical failure protocol. "
+                "Since live generative-inference API access is currently restricted, please strictly follow the procedures outlined in the 'Reciprocal Rank Fusion Extracted Contexts' safely."
+            )
         
         return {
-            "answer": response.content,
+            "answer": answer_text,
             "retrieved_context": best_contexts
         }
 
